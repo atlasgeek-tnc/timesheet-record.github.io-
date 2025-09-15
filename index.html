@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Weekly Timesheet</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background:#f7f7fb; margin:0; }
+    .card { max-width: 900px; margin: 32px auto; background:#fff; border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,.08); padding:24px; }
+    h1 { margin:0 0 8px; font-size:20px; }
+    .grid { display:grid; gap:12px; grid-template-columns: repeat(12, 1fr); }
+    .c3 { grid-column: span 3; } .c4 { grid-column: span 4; } .c6 { grid-column: span 6; } .c12 { grid-column: span 12; }
+    label { display:block; font-size:12px; color:#333; margin-bottom:6px; }
+    input, select, button { width:100%; padding:10px; border:1px solid #ddd; border-radius:10px; font-size:14px; background:#fff; }
+    button { background:#0f62fe; color:#fff; font-weight:600; cursor:pointer; }
+    .msg { margin-top:10px; font-weight:600; }
+    .ok { color:#0a8a00; } .err { color:#b00020; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Weekly Timesheet</h1>
+    <div class="grid">
+      <div class="c4">
+        <label>Employee ID *</label>
+        <input id="employeeId" required>
+      </div>
+      <div class="c8">
+        <label>Employee Name *</label>
+        <input id="employeeName" required>
+      </div>
+      <div class="c6">
+        <label>Project</label>
+        <input id="project">
+      </div>
+      <div class="c6">
+        <label>Task</label>
+        <input id="task">
+      </div>
+      <div class="c6">
+        <label>Week Of (any date in week) *</label>
+        <input id="weekDate" type="date" required>
+      </div>
+      <div class="c6">
+        <label>Total Hours (auto)</label>
+        <input id="total" type="number" step="0.25" readonly>
+      </div>
+      <div class="c12" style="margin-top:4px;">
+        <div class="grid">
+          <div class="c3"><label>Mon</label><input id="mon" type="number" min="0" step="0.25" value="0"></div>
+          <div class="c3"><label>Tue</label><input id="tue" type="number" min="0" step="0.25" value="0"></div>
+          <div class="c3"><label>Wed</label><input id="wed" type="number" min="0" step="0.25" value="0"></div>
+          <div class="c3"><label>Thu</label><input id="thu" type="number" min="0" step="0.25" value="0"></div>
+          <div class="c3"><label>Fri</label><input id="fri" type="number" min="0" step="0.25" value="0"></div>
+          <div class="c3"><label>Sat</label><input id="sat" type="number" min="0" step="0.25" value="0"></div>
+          <div class="c3"><label>Sun</label><input id="sun" type="number" min="0" step="0.25" value="0"></div>
+        </div>
+      </div>
+      <div class="c12">
+        <button id="submitBtn">Submit</button>
+        <div id="msg" class="msg"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyD0gjvW7bC-heASpLgIY-G4A2VONRgWwFQrnde9A3yyBXkCjbcmMh0FZwqgmvWW74o/exec'; // <-- your /exec URL
+
+    const $ = id => document.getElementById(id);
+    const dayIds = ['mon','tue','wed','thu','fri','sat','sun'];
+    function calcTotal() {
+      const t = dayIds.reduce((a,id)=> a + (parseFloat($(id).value||'0')||0), 0);
+      $('total').value = t.toFixed(2);
+    }
+    dayIds.forEach(id => $(id).addEventListener('input', calcTotal));
+    calcTotal();
+
+    $('submitBtn').addEventListener('click', async () => {
+      const payload = {
+        employeeId: $('employeeId').value.trim(),
+        employeeName: $('employeeName').value.trim(),
+        project: $('project').value.trim(),
+        task: $('task').value.trim(),
+        weekDate: $('weekDate').value,
+        mon: $('mon').value, tue: $('tue').value, wed: $('wed').value,
+        thu: $('thu').value, fri: $('fri').value, sat: $('sat').value, sun: $('sun').value
+      };
+      if (!payload.employeeId || !payload.employeeName || !payload.weekDate) {
+        return show('Please fill the required fields.', false);
+      }
+
+      try {
+        const res = await fetch(WEB_APP_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json().catch(()=> ({}));
+        if (res.ok && data.ok) {
+          show(data.message || 'Submitted ✅', true);
+        } else {
+          show(data.message || 'Submission failed', false);
+        }
+      } catch (e) {
+        show(e.message || 'Network error', false);
+      }
+    });
+
+    function show(text, ok) {
+      const el = $('msg'); el.textContent = text; el.className = 'msg ' + (ok ? 'ok' : 'err');
+    }
+  </script>
+</body>
+</html>
